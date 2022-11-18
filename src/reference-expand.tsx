@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 import { Menu, MenuItem } from "@blueprintjs/core";
 require("arrive");
 import createOverlayObserver from "roamjs-components/dom/createOverlayObserver";
-import { MouseEvent } from "react";
+import { MouseEvent, useEffect, useRef, useState } from "react";
 import {
   createOrGetBlockByTextInParentUid,
   createOrgetBlockChildrenByUid,
@@ -322,10 +322,30 @@ const renderBlock = async (
 
 const mountMenu = (config: BlockRefType) => {
   const blockreferenceExpander = new BlockReferenceExpander(config);
-  console.log(" render ----");
-  return ReactDOM.render(
-    <Menu>
-      <MenuItem icon="arrows-vertical" text="Expand Reference">
+  function App() {
+    const [show, setShow] = useState(0);
+    return (
+      <MenuItem
+        active={false}
+        tagName="span"
+        icon="arrows-vertical"
+        text="Expand Reference"
+        popoverProps={{
+          isOpen: [undefined, undefined, false][show],
+          onClose(event) {
+            // console.log("close");
+            if (show === 0) {
+              setShow(2);
+            }
+          },
+          onInteraction(nextOpenState, e?) {
+            // console.log("next-", nextOpenState, show);
+            if (show === 2) {
+              setShow(1);
+            }
+          },
+        }}
+      >
         <MenuItem
           icon="expand-all"
           text="Expand All"
@@ -347,10 +367,9 @@ const mountMenu = (config: BlockRefType) => {
           onClick={() => blockreferenceExpander.expandDown()}
         />
       </MenuItem>
-    </Menu>,
-
-    config.el
-  );
+    );
+  }
+  return ReactDOM.render(<App />, config.el);
 };
 
 const isRefMenu = (dom: HTMLElement): boolean => {
@@ -375,16 +394,15 @@ const observeRefMenuOpen = () => {
         if (!menuEl || menuEl.querySelector(`.${EXPAND_EL_CLASS_NAME}`)) {
           return;
         }
-        const liAnchor = document.createElement("fragment");
+        const liAnchor = document.createElement("section");
         liAnchor.className = EXPAND_EL_CLASS_NAME;
-        menuEl.appendChild(liAnchor);
-        ReactDOM.unmountComponentAtNode(liAnchor);
+        menuEl.insertBefore(liAnchor, menuEl.lastElementChild);
         setTimeout(() => {
           mountMenu({
             ...info,
             el: liAnchor,
           });
-        }, );
+        });
       }
     });
   });
