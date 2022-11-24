@@ -1,0 +1,8 @@
+.bp3-menu-item {
+    align-items: center;
+}
+
+.expand-references .bp3-menu .bp3-menu-item {
+    display: flex;
+    align-items: flex-end;
+}

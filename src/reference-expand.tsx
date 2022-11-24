@@ -12,7 +12,6 @@ import {
   onRouteChange,
 } from "./roam-utils";
 import { queryBlockDomFromRefDom } from "./roam-dom";
-import { PullBlock } from "roamjs-components/types";
 
 const log = (...args: any[]) => {
   if (logEnabled) console.log(...args);
@@ -349,22 +348,22 @@ const mountMenu = (config: BlockRefType) => {
       >
         <MenuItem
           icon="expand-all"
-          text="Expand All"
+          text="Full Path"
           onClick={() => blockreferenceExpander.expandUpAll()}
         />
         <MenuItem
           icon="collapse-all"
-          text="Collapse All"
+          text="Restore"
           onClick={() => blockreferenceExpander.reset()}
         />
         <MenuItem
-          icon="arrow-top-left"
-          text="Expand Up One Level"
+          icon="small-plus"
+          text="Up 1 level"
           onClick={() => blockreferenceExpander.expandUp()}
         />
         <MenuItem
-          icon="arrow-bottom-right"
-          text="Collapse Down One Level"
+          icon="small-minus"
+          text="Down 1 level"
           onClick={() => blockreferenceExpander.expandDown()}
         />
       </MenuItem>
