@@ -122,7 +122,7 @@ const getAllBlockConfig = (): BlockWithLevelStructure["children"] => {
   const result = getBlockWithLevelStructureByPageTitle(
     BLOCK_REFERENCE_CONFIG_PAGE
   );
-  return result.children;
+  return result?.children;
 };
 
 type BlockRefType = {
@@ -189,14 +189,15 @@ const refreshBlockRefStatusOnDom = (dom: HTMLElement) => {
   const config = getAllBlockConfig();
   const blockRefs = findAllBlockReferences(dom);
   log(blockRefs, " -- refs", dom);
-  blockRefs.forEach((item) => {
-    const refConfig = getBlockConfigFromConfig(item, config);
-    log(refConfig, item, config, " = ref config");
-    if (!refConfig) {
-      return;
-    }
-    renderBlock(item, refConfig);
-  });
+  config &&
+    blockRefs.forEach((item) => {
+      const refConfig = getBlockConfigFromConfig(item, config);
+      log(refConfig, item, config, " = ref config");
+      if (!refConfig) {
+        return;
+      }
+      renderBlock(item, refConfig);
+    });
 };
 
 const refreshPageBlockRefStatus = () => {
