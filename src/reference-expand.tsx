@@ -69,7 +69,7 @@ const BLOCK_REF_ATTRIBUTE_NAME = "data-uid";
  *      - up level
  *      - down level
  */
-const BLOCK_REFERENCE_CONFIG_PAGE = "roam/reference-expand/config";
+const BLOCK_REFERENCE_CONFIG_PAGE = "roam/reference extends/config";
 
 const EVERY_BLOCK_HAS_ATRRIBUTE = "data-page-links";
 
