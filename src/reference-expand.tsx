@@ -29,19 +29,35 @@ export const getStrFromUid = (uid: string) => {
   return result[":node/title"] || result[":block/string"];
 };
 
+type ReversePullBlock = {
+  ":block/uid": string;
+  ":block/string": string;
+  ":node/title": string;
+  ":block/_children": ReversePullBlock[];
+};
+
 const getStrFromParentsOf = (blockUid: string): string[] => {
-  const result = window.roamAlphaAPI.q(
-    `[:find [?uids ...]
-       :in $ ?uid
-       :where
-       [?b :block/uid ?uid]
-       [?b :block/parents ?bs]        
-       [?bs :block/uid ?uids]
-    ]`,
-    blockUid
-  ) as any as string[];
-  if (result && result.length) {
-    return result.map(getStrFromUid);
+  const result = window.roamAlphaAPI.pull(
+    `
+        [
+            :block/uid
+            :block/string
+            :node/title
+            {:block/_children ...}
+        ]
+    `,
+    [":block/uid", `${blockUid}`]
+  ) as unknown as ReversePullBlock;
+
+  if (result) {
+    let strs: string[] = [];
+    let ary = result[":block/_children"]
+    while (ary && ary.length) {
+      const block = ary[0];
+      strs.unshift(block[":block/string"] || block[":node/title"])
+      ary = block[":block/_children"]
+    }
+    return strs;
   }
   return [];
 };
