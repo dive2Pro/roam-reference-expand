@@ -1,3 +1,8 @@
+const createPage = async (title: string) => {
+  try {
+    await window.roamAlphaAPI.createPage({ page: { title: title } });
+  } catch (e) {}
+};
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 
 export const generateId = () => {
@@ -5,7 +10,7 @@ export const generateId = () => {
 };
 
 export const createOrGetPageByName = async (title: string): Promise<string> => {
-  await window.roamAlphaAPI.createPage({ page: { title: title } });
+  await createPage(title)
   return getPageUidByPageTitle(title);
 };
 
@@ -107,11 +112,8 @@ export const getCurrentPageUid = async () => {
 };
 
 export async function openPageByTitle(title: string) {
-  await window.roamAlphaAPI.createPage({
-    page: {
-      title: title,
-    },
-  });
+  await createPage(title);
+
   window.roamAlphaAPI.ui.mainWindow.openPage({
     page: { title: title },
   });

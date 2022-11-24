@@ -12,6 +12,7 @@ import {
   onRouteChange,
 } from "./roam-utils";
 import { queryBlockDomFromRefDom } from "./roam-dom";
+import { PullBlock } from "roamjs-components/types";
 
 const log = (...args: any[]) => {
   if (logEnabled) console.log(...args);
@@ -111,7 +112,7 @@ const getBlockWithLevelStructureByPageTitle = (
       :where
       [?e :node/title "${title}"]
     ]`
-  );
+  ) as unknown as BlockWithLevelStructure[][];
 
   if (result?.length) {
     return result[0][0];
