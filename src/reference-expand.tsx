@@ -127,7 +127,7 @@ const getBlockWithLevelStructureByPageTitle = (
       :where
       [?e :node/title "${title}"]
     ]`
-  ) as unknown as BlockWithLevelStructure[][];
+  );
 
   if (result?.length) {
     return result[0][0];
