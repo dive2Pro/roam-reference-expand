@@ -51,11 +51,11 @@ const getStrFromParentsOf = (blockUid: string): string[] => {
 
   if (result) {
     let strs: string[] = [];
-    let ary = result[":block/_children"]
+    let ary = result[":block/_children"];
     while (ary && ary.length) {
       const block = ary[0];
-      strs.unshift(block[":block/string"] || block[":node/title"])
-      ary = block[":block/_children"]
+      strs.unshift(block[":block/string"] || block[":node/title"]);
+      ary = block[":block/_children"];
     }
     return strs;
   }
@@ -318,23 +318,37 @@ const getBlockParentsLevel = (uid: string): number => {
 
 const queryBlockDomByUid = (uid: string) =>
   document.querySelectorAll(`[id$="${uid}"]`);
+
 const renderBlock = async (
   blockRefType: BlockRefType,
   expandInfo: ExpandInfo
 ) => {
-  const els = queryBlockDomByUid(blockRefType.blockUid);
-  const refString = getBlockTextByUid(blockRefType.uid);
-  const { up } = expandInfo;
-  const lookupStr = lookupStrByBlockUid(blockRefType.uid, Number(up)).map(
-    (s) => {
-      return `<span style="color: #9191A8;">${s} > </span>`;
-    }
-  );
-  console.log(els, " -");
-  els.forEach((el) => {
-    const targetEl = el.querySelector(`.${BLOCK_CLASS_NAME}`);
-    targetEl.innerHTML = combineString([...lookupStr, refString]);
-  });
+  const update = () => {
+    const els = queryBlockDomByUid(blockRefType.blockUid);
+    const refString = getBlockTextByUid(blockRefType.uid);
+    const { up } = expandInfo;
+    const lookupStr = lookupStrByBlockUid(blockRefType.uid, Number(up)).map(
+      (s) => {
+        return `<span style="color: #9191A8;">${s} > </span>`;
+      }
+    );
+    els.forEach((el) => {
+      const targetEl = el.querySelector(`.${BLOCK_CLASS_NAME}`) as HTMLElement;
+      if (targetEl.querySelector(".extended")) {
+        targetEl.removeChild(targetEl.querySelector(".extended"));
+      }
+
+      const fragment = document.createElement("span");
+      fragment.className = "extended";
+      lookupStr.forEach((str) => {
+        const span = document.createElement("span");
+        span.innerHTML = str;
+        fragment.appendChild(span);
+      });
+      targetEl.insertBefore(fragment, targetEl.firstChild);
+    });
+  };
+  update();
 };
 
 const mountMenu = (config: BlockRefType) => {
