@@ -328,8 +328,8 @@ const renderBlock = async (
     const refString = getBlockTextByUid(blockRefType.uid);
     const { up } = expandInfo;
     const lookupStr = lookupStrByBlockUid(blockRefType.uid, Number(up)).map(
-      (s) => {
-        return `<span style="color: #9191A8;">${s} > </span>`;
+      (s, index) => {
+        return `<span class="rm-expand-item rm-expand-level-${index}">${s} <span>></span> </span>`;
       }
     );
     els.forEach((el) => {
