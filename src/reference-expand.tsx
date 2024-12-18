@@ -3,7 +3,13 @@ import ReactDOM from "react-dom";
 import { Menu, MenuItem } from "@blueprintjs/core";
 require("arrive");
 import createOverlayObserver from "roamjs-components/dom/createOverlayObserver";
-import { MouseEvent, useEffect, useRef, useState } from "react";
+import {
+  MouseEvent,
+  startTransition,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   createOrGetBlockByTextInParentUid,
   createOrgetBlockChildrenByUid,
@@ -200,9 +206,11 @@ const refreshBlockByUid = (uid: string) => {
     refreshBlockRefStatusOnDom(dom as HTMLElement);
   });
 };
-
+let config: BlockWithLevelStructure["children"];
+const readConfig = () => {
+  config = getAllBlockConfig()
+}
 const refreshBlockRefStatusOnDom = (dom: HTMLElement) => {
-  const config = getAllBlockConfig();
   const blockRefs = findAllBlockReferences(dom);
   log(blockRefs, " -- refs", dom);
   config &&
@@ -323,6 +331,7 @@ const renderBlock = async (
   blockRefType: BlockRefType,
   expandInfo: ExpandInfo
 ) => {
+  console.log(` render block`);
   const update = () => {
     const els = queryBlockDomByUid(blockRefType.blockUid);
     const refString = getBlockTextByUid(blockRefType.uid);
@@ -468,16 +477,65 @@ const observeRefMenuOpen = () => {
 
 function MenuMain() {
   log("init preview for block references");
+  readConfig();
   refreshPageBlockRefStatus();
   const unsubInputChange = observeInputChange();
   const unsubRouteChange = onRouteChange(() =>
-    refreshBlockRefStatusOnDom(document.body)
+    { 
+      readConfig()
+      refreshBlockRefStatusOnDom(document.body) }
   );
   const unsubRefMenuOpen = observeRefMenuOpen();
   return () => {
     unsubInputChange();
     unsubRouteChange();
     unsubRefMenuOpen();
+  };
+}
+
+function onBlockInput() {
+  const selectorStr = '[id^="block-input"]';
+  const pendingUids = new Map<string, number>();
+  let running = false
+  function start() {
+    running = true
+    if(
+      pendingUids.size > 0
+    ) {
+      const uid = [...pendingUids.keys()][0];
+      refreshBlockByUid(uid);
+      pendingUids.delete(uid);
+      requestAnimationFrame(start);
+      return
+    } 
+    running = false
+  }
+  let idleId = requestAnimationFrame(start);
+
+  const onBlockInputArrive = (e: HTMLElement) => {
+    pendingUids.set(e.getAttribute("id").slice(-9), 1);
+     if (running) {
+       return;
+     }
+    readConfig();
+
+    start()
+
+  };
+
+  const onBlockInputLeave = (e: HTMLElement) => {
+    const uid = e.getAttribute("id").slice(-9);
+    pendingUids.delete(uid);
+  };
+
+  return () => {
+    document.arrive(selectorStr, onBlockInputArrive);
+    document.leave(selectorStr, onBlockInputLeave);
+    return () => {
+      document.unbindArrive(selectorStr, onBlockInputArrive);
+      document.unbindLeave(selectorStr, onBlockInputLeave);
+      cancelIdleCallback(idleId);
+    };
   };
 }
 
@@ -500,17 +558,11 @@ function observeInputChange() {
     mounted = false;
   };
   document.leave(`.${EXPAND_EL_CLASS_NAME}`, onMountElLeave);
-  const onBlockInputArray = (e: HTMLElement) => {
-    setTimeout(() => {
-      refreshBlockByUid(e.getAttribute("id").slice(-9));
-    });
-  };
-
-  document.arrive('[id^="block-input"]', onBlockInputArray);
+  const unsubBlockInput = onBlockInput()();
   return () => {
     document.unbindLeave(id, onArrive);
     document.unbindLeave(id, onLeave);
-    document.unbindArrive('[id^="block-input"]', onBlockInputArray);
+    unsubBlockInput();
     document.unbindLeave(`.${EXPAND_EL_CLASS_NAME}`, onMountElLeave);
   };
 }
