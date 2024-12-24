@@ -195,7 +195,6 @@ const getBlockConfigFromConfig = (
     return {
       up: refConfig.children[0].string,
       uid: refConfig.children[0].uid,
-      //   down: refConfig.children[1].string,
     };
   }
 };
@@ -207,12 +206,11 @@ const refreshBlockByUid = (uid: string) => {
   });
 };
 let config: BlockWithLevelStructure["children"];
-const readConfig = () => {
-  config = getAllBlockConfig()
-}
+const readConfig = debounce(() => {
+  config = getAllBlockConfig();
+}, 250);
 const refreshBlockRefStatusOnDom = (dom: HTMLElement) => {
   const blockRefs = findAllBlockReferences(dom);
-  log(blockRefs, " -- refs", dom);
   config &&
     blockRefs.forEach((item) => {
       const refConfig = getBlockConfigFromConfig(item, config);
@@ -480,61 +478,59 @@ function MenuMain() {
   readConfig();
   refreshPageBlockRefStatus();
   const unsubInputChange = observeInputChange();
-  const unsubRouteChange = onRouteChange(() =>
-    { 
-      readConfig()
-      refreshBlockRefStatusOnDom(document.body) }
-  );
+  
   const unsubRefMenuOpen = observeRefMenuOpen();
   return () => {
     unsubInputChange();
-    unsubRouteChange();
     unsubRefMenuOpen();
   };
 }
 
 function onBlockInput() {
   const selectorStr = '[id^="block-input"]';
-  const pendingUids = new Map<string, number>();
-  let running = false
-  function start() {
-    running = true
-    if(
-      pendingUids.size > 0
-    ) {
-      const uid = [...pendingUids.keys()][0];
-      refreshBlockByUid(uid);
-      pendingUids.delete(uid);
-      requestAnimationFrame(start);
-      return
-    } 
-    running = false
-  }
-  let idleId = requestAnimationFrame(start);
+  let pendingUids = new WeakMap<HTMLElement, string>();
+
+ const observer = new IntersectionObserver(
+   (entries) => {
+     entries.forEach((entry) => {
+       if (entry.isIntersecting) {
+        //  console.log(entry.target.id + " 进入视口了", entry.target, pendingUids.get(entry.target as HTMLElement));
+         refreshBlockByUid(pendingUids.get(entry.target as HTMLElement));
+       }
+     });
+   },
+   {
+     threshold: 0.3, // 当元素有10%进入视口时触发
+   }
+ );
 
   const onBlockInputArrive = (e: HTMLElement) => {
-    pendingUids.set(e.getAttribute("id").slice(-9), 1);
-     if (running) {
-       return;
-     }
+    pendingUids.set(e, e.getAttribute("id").slice(-9));
+    const blockrefs = e.querySelectorAll(`span.${BLOCK_CLASS_NAME}`);
+    if(blockrefs.length <= 0) {
+      return
+    }
     readConfig();
-
-    start()
-
+    observer.observe(e);
   };
 
   const onBlockInputLeave = (e: HTMLElement) => {
-    const uid = e.getAttribute("id").slice(-9);
-    pendingUids.delete(uid);
+    pendingUids.delete(e);
+    observer.unobserve(e)
   };
 
   return () => {
     document.arrive(selectorStr, onBlockInputArrive);
     document.leave(selectorStr, onBlockInputLeave);
+    const unsubRouteChange = onRouteChange(() => {
+      pendingUids = new WeakMap();
+      readConfig();
+      refreshBlockRefStatusOnDom(document.body);
+    });
     return () => {
       document.unbindArrive(selectorStr, onBlockInputArrive);
       document.unbindLeave(selectorStr, onBlockInputLeave);
-      cancelIdleCallback(idleId);
+      unsubRouteChange();
     };
   };
 }
@@ -570,3 +566,15 @@ function observeInputChange() {
 export function init(extensionAPI: RoamExtensionAPI) {
   extension_helper.on_uninstall(MenuMain());
 }
+function debounce(fn: Function, delay: number) {
+  let timer: any;
+  return (...args: any[]) => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => {
+      fn(...args);
+    }, delay);
+  };
+}
+
