@@ -3,7 +3,7 @@
 > show the  path of the block reference
 
 
-<img src="https://raw.githubusercontent.com/dive2Pro/roam-reference-expand/49e028ae09c5ec50eeec4436bd81247b7a7e0685/SCR-20221124-d9c.png" width="450">
+<img src="https://github.com/dive2Pro/roam-reference-expand/blob/172184fcb7ed5c58b7a2ab071cf9ad42abb5fcdd/PixPin_2025-11-26_21-10-18.png" width="450">
 
 
 ## Gif
