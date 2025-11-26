@@ -3,7 +3,7 @@ import { init } from "./reference-expand";
 import "./style.css";
 
 function onload({ extensionAPI }: { extensionAPI: RoamExtensionAPI }) {
-  init(extensionAPI);
+  init();
 }
 
 function onunload() {

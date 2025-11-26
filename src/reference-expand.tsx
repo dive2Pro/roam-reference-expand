@@ -1,15 +1,5 @@
 import { extension_helper } from "./helper";
-import ReactDOM from "react-dom";
-import { Menu, MenuItem } from "@blueprintjs/core";
 require("arrive");
-import createOverlayObserver from "roamjs-components/dom/createOverlayObserver";
-import {
-  MouseEvent,
-  startTransition,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
 import {
   createOrGetBlockByTextInParentUid,
   createOrgetBlockChildrenByUid,
@@ -18,17 +8,13 @@ import {
   onRouteChange,
 } from "./roam-utils";
 import { queryBlockDomFromRefDom } from "./roam-dom";
+import { BlockRefContext } from "roam-types";
 
 const log = (...args: any[]) => {
   if (logEnabled) console.log(...args);
 };
 
 const logEnabled = false;
-
-const combineString = (ary: string[]) => {
-  log(ary, " = ary ");
-  return ary.join("");
-};
 
 export const getStrFromUid = (uid: string) => {
   const result = window.roamAlphaAPI.data.pull("[*]", [":block/uid", `${uid}`]);
@@ -68,9 +54,6 @@ const getStrFromParentsOf = (blockUid: string): string[] => {
   return [];
 };
 
-const lookdownStrByBlockUid = (uid: string, level: number) => {
-  //   const result = lookdownBlockWithLevelStructureByBlock(uid, level);
-};
 const lookupStrByBlockUid = (uid: string, level: number) => {
   const strs = getStrFromParentsOf(uid);
   log(level, " --- level");
@@ -94,12 +77,6 @@ const BLOCK_REF_ATTRIBUTE_NAME = "data-uid";
 const BLOCK_REFERENCE_CONFIG_PAGE = "roam/reference extends/config";
 
 const EVERY_BLOCK_HAS_ATRRIBUTE = "data-page-links";
-
-type RefInfo = {
-  refUid: string;
-  up: number;
-  down: number;
-};
 
 type BlockConfig = {
   uid: string;
@@ -150,7 +127,6 @@ const getAllBlockConfig = (): BlockWithLevelStructure["children"] => {
 type BlockRefType = {
   uid: string;
   blockUid: string;
-  el?: HTMLElement;
 };
 
 const getRefUidFromSpan = (span: HTMLElement) => {
@@ -263,7 +239,6 @@ class BlockReferenceExpander {
 
   constructor(config: BlockRefType) {
     this.config = config;
-    this._init();
   }
 
   private async _init() {
@@ -285,36 +260,33 @@ class BlockReferenceExpander {
     });
   }
 
-  expandUp() {
+  async expandUp() {
     // write it to block
+    await this._init();
+
     log("expandup");
     const value = getBlockTextByUid(this.valueBlockUid) || 0;
     const nextValue = +value + 1;
     this.update(nextValue);
   }
 
-  expandUpAll() {
+  async expandUpAll() {
+    await this._init();
     this.update(Number.MAX_SAFE_INTEGER);
   }
 
-  reset() {
+  async reset() {
+    await this._init();
     this.update(0);
   }
 
-  expandDown() {
+  async expandDown() {
+    await this._init();
     const value = getBlockTextByUid(this.valueBlockUid) || 0;
     const nextValue = +value - 1;
     this.update(nextValue);
   }
 }
-
-const isHoverBlockReference = (e: HTMLElement): boolean => {
-  return e.className?.includes?.(BLOCK_CLASS_NAME);
-};
-
-const getBlockRefIdFromSpan = (e: { target: HTMLSpanElement }) => {
-  return e.target.getAttribute(BLOCK_REF_ATTRIBUTE_NAME);
-};
 
 const getBlockParentsLevel = (uid: string): number => {
   return window.roamAlphaAPI.q(
@@ -329,10 +301,9 @@ const renderBlock = async (
   blockRefType: BlockRefType,
   expandInfo: ExpandInfo
 ) => {
-  console.log(` render block`);
+  // console.log(` render block`);
   const update = () => {
     const els = queryBlockDomByUid(blockRefType.blockUid);
-    const refString = getBlockTextByUid(blockRefType.uid);
     const { up } = expandInfo;
     const lookupStr = lookupStrByBlockUid(blockRefType.uid, Number(up)).map(
       (s, index) => {
@@ -358,131 +329,72 @@ const renderBlock = async (
   update();
 };
 
-const mountMenu = (config: BlockRefType) => {
-  const blockreferenceExpander = new BlockReferenceExpander(config);
-  function App() {
-    const [show, setShow] = useState(0);
-    return (
-      <MenuItem
-        active={false}
-        tagName="span"
-        icon="arrows-vertical"
-        text="Expand Reference"
-        popoverProps={{
-          isOpen: [undefined, undefined, false][show],
-          onClose(event) {
-            // console.log("close");
-            if (show === 0) {
-              setShow(2);
-            }
-          },
-          onInteraction(nextOpenState, e?) {
-            // console.log("next-", nextOpenState, show);
-            if (show === 2) {
-              setShow(1);
-            }
-          },
-        }}
-      >
-        <MenuItem
-          icon="expand-all"
-          text="Full Path"
-          onClick={() => blockreferenceExpander.expandUpAll()}
-        />
-        <MenuItem
-          icon="collapse-all"
-          text="Restore"
-          onClick={() => blockreferenceExpander.reset()}
-        />
-        <MenuItem
-          icon="small-plus"
-          text="Up 1 level"
-          onClick={() => blockreferenceExpander.expandUp()}
-        />
-        <MenuItem
-          icon="small-minus"
-          text="Down 1 level"
-          onClick={() => blockreferenceExpander.expandDown()}
-        />
-      </MenuItem>
-    );
-  }
-  return ReactDOM.render(<App />, config.el);
-};
+const commands = [
+  {
+    label: "Expand Reference: Full Path",
+    onClick: async (context: BlockRefContext) => {
+      // blockreferenceExpander.expandUpAll();
+      new BlockReferenceExpander({
+        uid: context["ref-uid"],
+        blockUid: context["block-uid"],
+      }).expandUpAll();
+    },
+  },
+  {
+    label: "Expand Reference: Restore",
+    onClick: async (context: BlockRefContext) => {
+      new BlockReferenceExpander({
+        uid: context["ref-uid"],
+        blockUid: context["block-uid"],
+      }).reset();
+    },
+  },
+  {
+    label: "Expand Reference: Up 1 level",
+    onClick: async (context: BlockRefContext) => {
+      new BlockReferenceExpander({
+        uid: context["ref-uid"],
+        blockUid: context["block-uid"],
+      }).expandUp();
+    },
+  },
+  {
+    label: "Expand Reference: Down 1 level",
+    onClick: async (context: BlockRefContext) => {
+      new BlockReferenceExpander({
+        uid: context["ref-uid"],
+        blockUid: context["block-uid"],
+      }).expandDown();
+    },
+  },
+];
 
-const isRefMenu = (dom: HTMLElement): boolean => {
-  return (
-    dom.querySelector(".bp3-fill.bp3-text-overflow-ellipsis")?.innerHTML ===
-    "Jump to block"
-  );
-};
+commands.forEach((command) => {
+  window.roamAlphaAPI.ui.blockRefContextMenu.addCommand({
+    label: command.label,
+    callback: command.onClick,
+  });
+});
+
+extension_helper.on_uninstall(() => {
+  commands.forEach((command) => {
+    window.roamAlphaAPI.ui.blockRefContextMenu.removeCommand({
+      label: command.label,
+    });
+  });
+});
 
 const EXPAND_EL_CLASS_NAME = "expand-references";
 let mounted = false;
-
-const observeRefMenuOpen = () => {
-  let info: BlockRefType;
-  const observer = createOverlayObserver((mutations) => {
-    mutations.find((mutation) => {
-      const li = mutation.target as HTMLElement;
-      if (isRefMenu(li) && !mounted) {
-        log("ahahah");
-        mounted = true;
-        const menuEl = li.querySelector(".bp3-menu");
-        if (!menuEl || menuEl.querySelector(`.${EXPAND_EL_CLASS_NAME}`)) {
-          return;
-        }
-        const liAnchor = document.createElement("section");
-        liAnchor.className = EXPAND_EL_CLASS_NAME;
-        menuEl.insertBefore(liAnchor, menuEl.lastElementChild);
-        setTimeout(() => {
-          mountMenu({
-            ...info,
-            el: liAnchor,
-          });
-        });
-      }
-    });
-  });
-  const roamApp = document.querySelector(".roam-app");
-  const fn = (_e: Event) => {
-    const e = _e as any as MouseEvent;
-    // prevent the browser's native context menu
-    e.preventDefault();
-    let target = e.target as HTMLElement;
-    if (!isHoverBlockReference(target)) {
-      return;
-    }
-
-    const uid = getRefUidFromSpan(e.target as HTMLElement);
-
-    log("eee----2 ", uid, e.target);
-    if (!uid) {
-      return;
-    }
-    info = {
-      uid,
-      blockUid: queryBlockDomFromRefDom(target),
-    };
-  };
-
-  roamApp.addEventListener("mouseover", fn);
-  return () => {
-    roamApp.removeEventListener("mouseover", fn);
-    observer.disconnect();
-  };
-};
 
 function MenuMain() {
   log("init preview for block references");
   readConfig();
   refreshPageBlockRefStatus();
   const unsubInputChange = observeInputChange();
-  
-  const unsubRefMenuOpen = observeRefMenuOpen();
+
   return () => {
     unsubInputChange();
-    unsubRefMenuOpen();
   };
 }
 
@@ -490,25 +402,25 @@ function onBlockInput() {
   const selectorStr = '[id^="block-input"]';
   let pendingUids = new WeakMap<HTMLElement, string>();
 
- const observer = new IntersectionObserver(
-   (entries) => {
-     entries.forEach((entry) => {
-       if (entry.isIntersecting) {
-        //  console.log(entry.target.id + " 进入视口了", entry.target, pendingUids.get(entry.target as HTMLElement));
-         refreshBlockByUid(pendingUids.get(entry.target as HTMLElement));
-       }
-     });
-   },
-   {
-     threshold: 0.3, // 当元素有10%进入视口时触发
-   }
- );
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          //  console.log(entry.target.id + " 进入视口了", entry.target, pendingUids.get(entry.target as HTMLElement));
+          refreshBlockByUid(pendingUids.get(entry.target as HTMLElement));
+        }
+      });
+    },
+    {
+      threshold: 0.3, // 当元素有10%进入视口时触发
+    }
+  );
 
   const onBlockInputArrive = (e: HTMLElement) => {
     pendingUids.set(e, e.getAttribute("id").slice(-9));
     const blockrefs = e.querySelectorAll(`span.${BLOCK_CLASS_NAME}`);
-    if(blockrefs.length <= 0) {
-      return
+    if (blockrefs.length <= 0) {
+      return;
     }
     readConfig();
     observer.observe(e);
@@ -516,7 +428,7 @@ function onBlockInput() {
 
   const onBlockInputLeave = (e: HTMLElement) => {
     pendingUids.delete(e);
-    observer.unobserve(e)
+    observer.unobserve(e);
   };
 
   return () => {
@@ -563,7 +475,7 @@ function observeInputChange() {
   };
 }
 
-export function init(extensionAPI: RoamExtensionAPI) {
+export function init() {
   extension_helper.on_uninstall(MenuMain());
 }
 function debounce(fn: Function, delay: number) {
@@ -577,4 +489,3 @@ function debounce(fn: Function, delay: number) {
     }, delay);
   };
 }
-

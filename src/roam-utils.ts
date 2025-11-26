@@ -1,13 +1,21 @@
-import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 
+
+const getPageUidByPageTitle = async (title: string) => {
+  return window.roamAlphaAPI.data.async.q(
+    `[:find [?e] :where [?p :node/title "${title}"] [?p :block/uid ?e]]`
+  ).then(result => result[0] as unknown as string);
+}
 export const generateId = () => {
   return window.roamAlphaAPI.util.generateUID();
 };
 
 const createPage = async (title: string) => {
   try {
+    if (await getPageUidByPageTitle(title)) {
+      return;
+    }
     await window.roamAlphaAPI.createPage({ page: { title: title } });
-  } catch (e) {}
+  } catch (e) { }
 };
 
 export const createOrGetPageByName = async (title: string): Promise<string> => {
@@ -125,4 +133,25 @@ export const getBlockTextByUid = (uid: string) => {
     `[:find [?e] :where [?b :block/uid "${uid}"] [?b :block/string ?e]]`
   );
   return (result as any as string) || "";
+};
+
+
+export const readBlockProps = async (uid: string) => {
+  const [result] = await window.roamAlphaAPI.data.async.q(
+    `[:find [?e] :where [?b :block/uid "${uid}"] [?b :block/props ?e]]`
+  );
+  return (result as any as Record<string, any>) || {};
+}
+
+export const writeBlockProps = async (uid: string, props: Record<string, any>) => {
+  const currentProps = await readBlockProps(uid);
+  return window.roamAlphaAPI.updateBlock({
+    block: {
+      uid: uid,
+      props: {
+        ...currentProps,
+        ...props,
+      },
+    },
+  });
 };
